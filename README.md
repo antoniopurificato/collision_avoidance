@@ -4,4 +4,6 @@ Collision avoidance project.
 
 ### TODO:
 - [x] Create a ROS node
-- [ ] Complete the subscriber for the velocity
+- [x] Complete the subscriber for the velocity
+- [ ] Complete the subscriber for the laser scan
+- [ ] Fix the problems with the web controller

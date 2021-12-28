@@ -22,8 +22,26 @@ void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
 
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
- if (!cmdReceived ) return;
- cmdReceived = false;
+ if (!command_received ) return;
+ command_received = false;
+
+ tf::TransformListener listener;
+ laser_geometry::LaserProjection laser_projection;
+ sensor_msgs::PointCloud cloud;
+ laser_projection.transformLaserScanToPointCloud("base_laser_link", *msg, cloud, listener);
+
+
+  tf::StampedTransform tf_obstacle;
+   try{
+        /*I convert the points from the laser scan to the reference frame of the robot*/
+        listener.waitForTransform("base_footprint", "base_laser_link", ros::Time(0), ros::Duration(10.0)); 
+        listener.lookupTransform("base_footprint", "base_laser_link", ros::Time(0), tf_obstacle); 
+
+    }
+    catch(tf::TransformException &ex){
+        ROS_ERROR("%s", "Transformation error");
+        return;
+    }
 }
 
 int main(int argc, char **argv){
@@ -37,8 +55,11 @@ int main(int argc, char **argv){
 
     /*Subscriber for the laser scan (topic) of the robot*/
     ros::Subscriber laser_scan_sub = n.subscribe("base_scan", 1, laser_callback);
+
     ROS_INFO("Collision avoidance node is active!\n");
     velocity = n.advertise<geometry_msgs::Twist>("cmd_vel",1000);
     ros::spin();
     return 0;
 }
+
+//rosrun srrg_joystick_teleop joy_teleop_node cmd_vel=cmd_vel_callback
