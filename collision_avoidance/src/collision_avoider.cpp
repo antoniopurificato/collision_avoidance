@@ -7,6 +7,7 @@
 #include <laser_geometry/laser_geometry.h>
 #include <Eigen/StdVector>
 #include <Eigen/Geometry>
+#include "geometry.h"
 
 ros::Publisher velocity;
 bool command_received = false;
@@ -36,12 +37,16 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
         /*I convert the points from the laser scan to the reference frame of the robot*/
         listener.waitForTransform("base_footprint", "base_laser_link", ros::Time(0), ros::Duration(10.0)); 
         listener.lookupTransform("base_footprint", "base_laser_link", ros::Time(0), tf_obstacle); 
-
+        ROS_INFO("%d", tf_obstacle.getOrigin().getY());
     }
     catch(tf::TransformException &ex){
         ROS_ERROR("%s", "Transformation error");
         return;
     }
+
+    /*Coordinates in robot reference frame*/
+    Eigen::Isometry2f laser_tf = convertPose2D(tf_obstacle);
+    ROS_INFO("Laser transform: %s\n",laser_tf);
 }
 
 int main(int argc, char **argv){
