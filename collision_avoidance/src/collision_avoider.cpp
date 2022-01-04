@@ -46,7 +46,30 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
     /*Coordinates in robot reference frame*/
     Eigen::Isometry2f laser_tf = convertPose2D(tf_obstacle);
-    ROS_INFO("Laser transform: %s\n",laser_tf);
+    float force_x,force_y = 0;
+    Eigen::Vector2f position;
+
+    /*I scan all the elements of the cloud and i compute the x and y components of the obstacle's position*/
+    for(auto& point: cloud.points){         
+        position(0) = point.x;                 
+        position(1) = point.y;
+
+        /*Position of the obstacle in the robot reference frame*/
+        position = laser_tf * position;
+
+        /*Distance between the robot and the obstacle*/
+        float distance = sqrt(pow(point.x,2) + pow(point.y,2));
+
+        /*Modulus of the force*/
+        float mod = 1/pow(distance,2);
+
+        force_x += position(0) * mod;
+        force_y += position(1) * mod;
+    }
+
+    /*I have to consider the opposite sign of the force*/
+    force_x = -force_x;
+    force_y  -force_y;
 }
 
 int main(int argc, char **argv){
@@ -66,5 +89,3 @@ int main(int argc, char **argv){
     ros::spin();
     return 0;
 }
-
-//rosrun srrg_joystick_teleop joy_teleop_node cmd_vel=cmd_vel_callback
