@@ -7,6 +7,7 @@
 #include <laser_geometry/laser_geometry.h>
 #include <Eigen/StdVector>
 #include <Eigen/Geometry>
+#include <math.h>
 #include "geometry.h"
 
 ros::Publisher velocity;
@@ -37,7 +38,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
         /*I convert the points from the laser scan to the reference frame of the robot*/
         listener.waitForTransform("base_footprint", "base_laser_link", ros::Time(0), ros::Duration(10.0)); 
         listener.lookupTransform("base_footprint", "base_laser_link", ros::Time(0), tf_obstacle); 
-        ROS_INFO("%d", tf_obstacle.getOrigin().getY());
+        //ROS_INFO("%d", tf_obstacle.getOrigin().getY());
     }
     catch(tf::TransformException &ex){
         ROS_ERROR("%s", "Transformation error");
@@ -48,6 +49,8 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     Eigen::Isometry2f laser_tf = convertPose2D(tf_obstacle);
     float force_x,force_y = 0;
     Eigen::Vector2f position;
+
+    geometry_msgs::Twist msg_send;
 
     /*I scan all the elements of the cloud and i compute the x and y components of the obstacle's position*/
     for(auto& point: cloud.points){         
@@ -61,15 +64,38 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
         float distance = sqrt(pow(point.x,2) + pow(point.y,2));
 
         /*Modulus of the force*/
-        float mod = 1/pow(distance,2);
+        //float mod = 1/pow(distance,2);
+        ROS_INFO("DISTANCE: %f",distance);
 
-        force_x += position(0) * mod;
-        force_y += position(1) * mod;
+        if(distance < 0.15){
+                float theta = atan2(-position(1), -position(0));
+                float magnitude = 1/(distance);
+
+                msg_send.linear.x += magnitude * cos(theta); //move back/forward
+                msg_send.angular.z += magnitude * sin(theta) * 0.01; //rotation in (x,y) plane with a scale factor
+
+            }
+
+        //force_x += position(0) * mod;
+        //force_y += position(1) * mod;
     }
 
     /*I have to consider the opposite sign of the force*/
-    force_x = -force_x;
-    force_y  -force_y;
+    //force_x = -force_x;
+    //force_y  -force_y;
+
+
+    //geometry_msgs::Twist msg_send;
+
+    //msg_send.angular.z = vel_angular + force_y * 0.00087 ;
+                                                                    
+    //force_x = force_x * abs(vel_x)/485 ;                                                
+    //force_y = force_y * abs(vel_y)/485 ;
+
+    //msg_send.linear.x = force_x + vel_x;
+    //msg_send.linear.y = force_y + vel_y;
+
+    velocity.publish(msg_send);
 }
 
 int main(int argc, char **argv){
