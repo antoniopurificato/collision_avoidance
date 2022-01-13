@@ -10,6 +10,9 @@
 #include <math.h>
 #include "geometry.h"
 
+//I hace to try to save the forces in the lassica way and then do the avoidance operation
+
+const int AVOIDANCE_FACTOR = 10000;
 ros::Publisher velocity;
 bool command_received = false;
 float vel_x, vel_y, vel_angular = 0;
@@ -30,15 +33,26 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
  tf::TransformListener listener;
  laser_geometry::LaserProjection laser_projection;
  sensor_msgs::PointCloud cloud;
+
+ /*Transform a sensor_msgs::LaserScan into a sensor_msgs::PointCloud in target frame.*/
  laser_projection.transformLaserScanToPointCloud("base_laser_link", *msg, cloud, listener);
 
 
   tf::StampedTransform tf_obstacle;
    try{
         /*I convert the points from the laser scan to the reference frame of the robot*/
-        listener.waitForTransform("base_footprint", "base_laser_link", ros::Time(0), ros::Duration(10.0)); 
-        listener.lookupTransform("base_footprint", "base_laser_link", ros::Time(0), tf_obstacle); 
-        //ROS_INFO("%d", tf_obstacle.getOrigin().getY());
+    /*The waitForTransform() takes four arguments:
+
+    Wait for the transform from this frame...
+    ... to this frame,
+    at this time, and
+    timeout: don't wait for longer than this maximum duration*/
+        listener.waitForTransform("base_footprint", "base_laser_link", ros::Time(0), ros::Duration(1.0)); 
+        
+    /*We want the transform from frame base_footprint to frame base_laser_link.
+    The time at which we want to transform. Providing ros::Time(0) will just get us the latest available transform.
+    The object in which we store the resulting transform.*/
+        listener.lookupTransform("base_footprint", "base_laser_link", ros::Time(0), tf_obstacle);
     }
     catch(tf::TransformException &ex){
         ROS_ERROR("%s", "Transformation error");
@@ -64,36 +78,18 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
         float distance = sqrt(pow(point.x,2) + pow(point.y,2));
 
         /*Modulus of the force*/
-        //float mod = 1/pow(distance,2);
+        float mod = 1/pow(distance,2);
         ROS_INFO("DISTANCE: %f",distance);
 
-        if(distance < 0.15){
+        if(distance < 0.3){
                 float theta = atan2(-position(1), -position(0));
                 float magnitude = 1/(distance);
 
-                msg_send.linear.x += magnitude * cos(theta); //move back/forward
-                msg_send.angular.z += magnitude * sin(theta) * 0.01; //rotation in (x,y) plane with a scale factor
-
+                msg_send.linear.x += (magnitude * cos(theta))/AVOIDANCE_FACTOR; 
+                msg_send.angular.z += (magnitude * sin(theta))/AVOIDANCE_FACTOR;// * 0.1; 
             }
-
-        //force_x += position(0) * mod;
-        //force_y += position(1) * mod;
     }
 
-    /*I have to consider the opposite sign of the force*/
-    //force_x = -force_x;
-    //force_y  -force_y;
-
-
-    //geometry_msgs::Twist msg_send;
-
-    //msg_send.angular.z = vel_angular + force_y * 0.00087 ;
-                                                                    
-    //force_x = force_x * abs(vel_x)/485 ;                                                
-    //force_y = force_y * abs(vel_y)/485 ;
-
-    //msg_send.linear.x = force_x + vel_x;
-    //msg_send.linear.y = force_y + vel_y;
 
     velocity.publish(msg_send);
 }
