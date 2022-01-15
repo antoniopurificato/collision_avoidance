@@ -10,19 +10,15 @@
 #include <math.h>
 #include "geometry.h"
 
-//I hace to try to save the forces in the lassica way and then do the avoidance operation
-
-const int AVOIDANCE_FACTOR = 10000;
+const int AVOIDANCE_FACTOR = 10;
 ros::Publisher velocity;
 bool command_received = false;
-float vel_x, vel_y, vel_angular = 0;
+geometry_msgs::Twist velocity_received;
 
 void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
     
     command_received=true; 
-    vel_x=msg->linear.x;
-    vel_y=msg->linear.y; 
-    vel_angular=msg->angular.z;
+    velocity_received = *msg;
 }
 
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
@@ -40,7 +36,8 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
   tf::StampedTransform tf_obstacle;
    try{
-        /*I convert the points from the laser scan to the reference frame of the robot*/
+    
+    /*I convert the points from the laser scan to the reference frame of the robot*/
     /*The waitForTransform() takes four arguments:
 
     Wait for the transform from this frame...
@@ -54,44 +51,68 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     The object in which we store the resulting transform.*/
         listener.lookupTransform("base_footprint", "base_laser_link", ros::Time(0), tf_obstacle);
     }
-    catch(tf::TransformException &ex){
-        ROS_ERROR("%s", "Transformation error");
+    catch(tf::TransformException &e){
+        ROS_ERROR("%s", e.what());
         return;
     }
 
     /*Coordinates in robot reference frame*/
     Eigen::Isometry2f laser_tf = convertPose2D(tf_obstacle);
-    float force_x,force_y = 0;
-    Eigen::Vector2f position;
 
-    geometry_msgs::Twist msg_send;
+    float force_x,force_y = 0;
+    Eigen::Vector2f initial_position,current_position;
+    
+    initial_position(0) = cloud.points[540].x;
+    initial_position(1) = 0;
+
+    /*I compute the initial distance between the laser scan of my robot and the closest obstacle*/
+    initial_position = laser_tf * initial_position;
+    float initial_distance = sqrt(pow(initial_position(0),2)+pow(initial_position(1),2));
 
     /*I scan all the elements of the cloud and i compute the x and y components of the obstacle's position*/
     for(auto& point: cloud.points){         
-        position(0) = point.x;                 
-        position(1) = point.y;
+        current_position(0) = point.x;                 
+        current_position(1) = point.y;
 
         /*Position of the obstacle in the robot reference frame*/
-        position = laser_tf * position;
+        current_position = laser_tf * current_position;
 
-        /*Distance between the robot and the obstacle*/
-        float distance = sqrt(pow(point.x,2) + pow(point.y,2));
+        /*Current distance between the robot and the obstacle*/
+        float current_distance = sqrt(pow(point.x,2) + pow(point.y,2));
 
-        /*Modulus of the force*/
-        float mod = 1/pow(distance,2);
-        ROS_INFO("DISTANCE: %f",distance);
-
-        if(distance < 0.3){
-                float theta = atan2(-position(1), -position(0));
-                float magnitude = 1/(distance);
-
-                msg_send.linear.x += (magnitude * cos(theta))/AVOIDANCE_FACTOR; 
-                msg_send.angular.z += (magnitude * sin(theta))/AVOIDANCE_FACTOR;// * 0.1; 
-            }
+        /*If i'm closer to the obstacle wrt. the previous position i update the intial position with the current position*/
+        if(current_distance < initial_distance){
+            initial_distance = current_distance;
+            initial_position = current_position;
+        }
     }
 
+    /*If i am too much close to the obstacle, i avoid it*/
+    if(initial_distance < 0.3){
+        float magnitude = (1.0 / initial_distance);
+        magnitude /= AVOIDANCE_FACTOR;
+        force_x = -(initial_position(0) / initial_distance) * magnitude;
+        force_y = -(initial_position(1) / initial_distance) * magnitude;
 
-    velocity.publish(msg_send);
+        geometry_msgs::Twist msg_send;
+
+        msg_send.linear.x = velocity_received.linear.x + force_x;
+
+
+        msg_send.linear.y = velocity_received.linear.y + force_y;
+        msg_send.linear.z = velocity_received.linear.z;
+
+        if(initial_position(1) > 0)
+            msg_send.angular.z = - magnitude; 
+        else if (initial_position(1) < 0)
+            msg_send.angular.z = magnitude; 
+
+        velocity.publish(msg_send);
+    }
+
+    else {
+      velocity.publish(velocity_received);
+    }
 }
 
 int main(int argc, char **argv){
@@ -101,7 +122,7 @@ int main(int argc, char **argv){
     ros::NodeHandle n;
 
     /*Subscriber for the velocity command (topic) of the robot*/
-    ros::Subscriber cmd_vel_sub = n.subscribe("cmd_vel", 1, cmd_vel_callback);
+    ros::Subscriber cmd_vel_sub = n.subscribe("cmd_vel_call", 1, cmd_vel_callback);
 
     /*Subscriber for the laser scan (topic) of the robot*/
     ros::Subscriber laser_scan_sub = n.subscribe("base_scan", 1, laser_callback);
