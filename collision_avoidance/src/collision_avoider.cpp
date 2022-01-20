@@ -1,3 +1,4 @@
+
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include <geometry_msgs/Twist.h>
@@ -10,7 +11,7 @@
 #include <math.h>
 #include "geometry.h"
 
-const int AVOIDANCE_FACTOR = 10;
+const int AVOIDANCE_FACTOR = 10000;
 ros::Publisher velocity;
 bool command_received = false;
 geometry_msgs::Twist velocity_received;
@@ -36,19 +37,8 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
   tf::StampedTransform tf_obstacle;
    try{
-    
-    /*I convert the points from the laser scan to the reference frame of the robot*/
-    /*The waitForTransform() takes four arguments:
 
-    Wait for the transform from this frame...
-    ... to this frame,
-    at this time, and
-    timeout: don't wait for longer than this maximum duration*/
         listener.waitForTransform("base_footprint", "base_laser_link", ros::Time(0), ros::Duration(1.0)); 
-        
-    /*We want the transform from frame base_footprint to frame base_laser_link.
-    The time at which we want to transform. Providing ros::Time(0) will just get us the latest available transform.
-    The object in which we store the resulting transform.*/
         listener.lookupTransform("base_footprint", "base_laser_link", ros::Time(0), tf_obstacle);
     }
     catch(tf::TransformException &e){
@@ -63,7 +53,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     Eigen::Vector2f initial_position,current_position;
     
     initial_position(0) = cloud.points[540].x;
-    initial_position(1) = 0;
+    initial_position(1) = cloud.points[540].y;
 
     /*I compute the initial distance between the laser scan of my robot and the closest obstacle*/
     initial_position = laser_tf * initial_position;
@@ -80,25 +70,26 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
         /*Current distance between the robot and the obstacle*/
         float current_distance = sqrt(pow(point.x,2) + pow(point.y,2));
 
+        /*I  compute the resultant forces*/
+        force_x += current_position(0) / pow(current_distance,2);
+        force_y += current_position(1) / pow(current_distance,2);
+
         /*If i'm closer to the obstacle wrt. the previous position i update the intial position with the current position*/
         if(current_distance < initial_distance){
             initial_distance = current_distance;
             initial_position = current_position;
         }
+
     }
 
     /*If i am too much close to the obstacle, i avoid it*/
-    if(initial_distance < 0.3){
+    if(initial_distance < 0.2){
         float magnitude = (1.0 / initial_distance);
-        magnitude /= AVOIDANCE_FACTOR;
-        force_x = -(initial_position(0) / initial_distance) * magnitude;
-        force_y = -(initial_position(1) / initial_distance) * magnitude;
-
+        force_x = -force_x/AVOIDANCE_FACTOR;
+        force_y = - force_y/AVOIDANCE_FACTOR;
         geometry_msgs::Twist msg_send;
 
         msg_send.linear.x = velocity_received.linear.x + force_x;
-
-
         msg_send.linear.y = velocity_received.linear.y + force_y;
         msg_send.linear.z = velocity_received.linear.z;
 

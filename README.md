@@ -9,3 +9,4 @@ Collision avoidance project.
 - [x] Complete the subscriber for the laser scan;
 - [ ] Test and bug fixing;
 - [ ] Write the report;
+- [ ] Write the setup;
