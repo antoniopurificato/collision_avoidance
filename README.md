@@ -10,3 +10,40 @@ Collision avoidance project.
 - [ ] Test and bug fixing;
 - [ ] Write the report;
 - [ ] Write the setup;
+
+### Setup
+0. Go in the ```src``` folder of your catkin workspace.
+
+1. Download the C++ teleop_twist_keyboard package to move the robot in the environment using the keyboard.
+  ```
+  git clone https://github.com/methylDragon/teleop_twist_keyboard_cpp.git
+  ```
+2. Download the avoidance package.
+ ```
+git clone https://github.com/antoniopurificato/collision_avoidance.git
+ ```
+3. Build the project.
+ ```
+cd .. && catkin build && source devel/setup.bash
+ ```
+
+### Execution
+0. Go in the catkin workspace.
+
+1. Start the roscore.
+  ```
+  roscore
+  ```
+2. Open a different window and run the teleop_twist_keyboard.
+ ```
+  source devel/setup.bash && rosrun teleop_twist_keyboard_cpp teleop_twist_keyboard cmd_vel:=cmd_vel_call
+  ```
+3. Open a different window and run the stage.
+```
+source devel/setup.bash && rosrun stage_ros stageros cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world
+```
+4. Open a different window and run the avoider.
+```
+source devel/setup.bash && rosrun collision_avoidance collision_avoider
+```
+Use the keyboard to move the robot.
