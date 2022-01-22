@@ -1,15 +1,6 @@
 # ROBOT PROGRAMMING
-Repository of the code for the project of Robot Programming 2021/22.<br/>
+Repository of the code for the project of Robot Programming 2021/22,"La Sapienza" University of Rome.<br/>
 Collision avoidance project.
-
-### TODO:
-- [x] Create a ROS node;
-- [x] Complete the subscriber for the velocity;
-- [x] Implement a method to switch from DH parameters to a rotation matrix related to the robot reference frame;
-- [x] Complete the subscriber for the laser scan;
-- [ ] Test and bug fixing;
-- [ ] Write the report;
-- [ ] Write the setup;
 
 ### Setup
 0. Go in the ```src``` folder of your catkin workspace.
@@ -38,12 +29,21 @@ cd .. && catkin build && source devel/setup.bash
  ```
   source devel/setup.bash && rosrun teleop_twist_keyboard_cpp teleop_twist_keyboard cmd_vel:=cmd_vel_call
   ```
-3. Open a different window and run the stage.
-```
-source devel/setup.bash && rosrun stage_ros stageros cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world
-```
-4. Open a different window and run the avoider.
+3. Open a different window and run the avoider.
 ```
 source devel/setup.bash && rosrun collision_avoidance collision_avoider
 ```
-Use the keyboard to move the robot.
+4. Open a different window and run the stage.
+```
+source devel/setup.bash && cd src/srrg2_configs/navigation_2d/ &&rosrun stage_ros stageros cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world
+```
+Come back to the terminal window with the teleop_twist_keyboard active and use the keyboard to move the robot.
+
+### TODO:
+- [x] Create a ROS node;
+- [x] Complete the subscriber for the velocity;
+- [x] Implement a method to switch from DH parameters to a rotation matrix related to the robot reference frame;
+- [x] Complete the subscriber for the laser scan;
+- [x] Write the report;
+- [x] Write the setup;
+- [ ] Test and bug fixing;
