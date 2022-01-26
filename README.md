@@ -35,15 +35,13 @@ source devel/setup.bash && rosrun collision_avoidance collision_avoider
 ```
 4. Open a different window and run the stage.
 ```
-source devel/setup.bash && cd src/srrg2_configs/navigation_2d/ &&rosrun stage_ros stageros cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world
+source devel/setup.bash && cd src/srrg2_configs/navigation_2d/ && rosrun stage_ros stageros cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world
 ```
 Come back to the terminal window with the teleop_twist_keyboard active and use the keyboard to move the robot.
 
 ### TODO:
 - [x] Create a ROS node;
 - [x] Complete the subscriber for the velocity;
-- [x] Implement a method to switch from DH parameters to a rotation matrix related to the robot reference frame;
 - [x] Complete the subscriber for the laser scan;
 - [x] Write the report;
-- [x] Write the setup;
-- [ ] Test and bug fixing;
+
